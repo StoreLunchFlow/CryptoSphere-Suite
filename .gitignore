@@ -1,0 +1,81 @@
+﻿# System and OS files
+NTUSER.DAT*
+ntuser.*
+*.log1
+*.log2
+*.regtrans-ms
+*.ini
+Thumbs.db
+Desktop.ini
+.DS_Store
+.BIN/
+
+# User profile directories (NEVER commit these!)
+AppData/
+Contacts/
+Downloads/
+Favorites/
+Links/
+Saved Games/
+Searches/
+OneDrive/
+
+# IDE and development
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-*
+
+# Build artifacts
+bin/
+obj/
+dist/
+build/
+__pycache__/
+*.pyc
+*.pyo
+
+# Dependencies
+node_modules/
+vendor/
+packages/
+
+# Logs and temp files
+*.log
+*.tmp
+*.temp
+*.cache
+
+# Secrets and configs (CRITICAL!)
+*.env
+.env.local
+*.key
+*.pem
+*.cert
+config.json
+secrets.txt
+appsettings.json
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Large files
+*.zip
+*.rar
+*.7z
+*.iso
+*.vhd
+*.vhdx
+
+# PowerShell specific
+*.ps1xml
+*.pssc
+*.psm1
+*.cdxml
+
+# Project specific (keep these if needed)
+# !data/repository-stats.json
+# !docs/ANALYTICS.md
