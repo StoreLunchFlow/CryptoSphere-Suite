@@ -1,0 +1,11 @@
+﻿# GitHub Pages Configuration
+title: CryptoSphere Suite Sponsorship
+description: Professional sponsorship opportunities for CryptoSphere Suite
+theme: jekyll-theme-minimal
+include:
+  - .nojekyll
+  - CNAME
+exclude:
+  - README.md
+  - LICENSE
+  - .gitignore
