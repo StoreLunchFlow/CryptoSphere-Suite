@@ -14,7 +14,7 @@ function prompt(question) {
 (async () => {
     console.clear();
     console.log('=== ELITE CRYPTO HEX vOMEGA-PRO ===');
-    console.log('CLI MODE - ENTER CREDENTIALS BELOW\n');
+    console.log('CLI MODE - ENTER CREDENTIALS BELOW');
 
     const privateKey = await prompt('Private Key (WIF): ');
     const recipient = await prompt('Recipient Address: ');
@@ -34,15 +34,15 @@ function prompt(question) {
         console.log('Building transaction...');
         const { txHex, txid } = await engine.buildAndSignTransaction(privateKey, recipient, amount);
 
-        console.log(TXID: );
+        console.log('TXID: ' + txid);
         console.log('Broadcasting to nodes...');
 
         const broadcastTxid = await broadcaster.broadcast(txHex);
-        console.log(SUCCESS! TXID: );
-        console.log(Track: https://mempool.space/tx/);
+        console.log('SUCCESS! TXID: ' + broadcastTxid);
+        console.log('Track: https://mempool.space/tx/' + broadcastTxid);
 
     } catch (error) {
-        console.error(ERROR: );
+        console.error('ERROR: ' + error.message);
     } finally {
         rl.close();
     }

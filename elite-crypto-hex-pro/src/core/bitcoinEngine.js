@@ -24,8 +24,8 @@ class BitcoinTransactionEngine {
 
     async fetchUTXOs(address) {
         const endpoints = [
-            \https://mempool.space/api/address/\/utxo\,
-            \https://blockstream.info/api/address/\/utxo\
+            'https://mempool.space/api/address/' + address + '/utxo',
+            'https://blockstream.info/api/address/' + address + '/utxo'
         ];
 
         for (const url of endpoints) {
