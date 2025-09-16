@@ -1,0 +1,393 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CryptoGuard Sentinel | Live Threat Simulation</title>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4338ca;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --success: #10b981;
+            --dark: #1e293b;
+            --light: #f8fafc;
+            --gray: #64748b;
+            --card-bg: rgba(255, 255, 255, 0.05);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: var(--light);
+            min-height: 100vh;
+            padding: 2rem;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            background: linear-gradient(90deg, var(--primary) 0%, #06b6d4 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: var(--gray);
+            font-size: 1.2rem;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 1.5rem;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        .main-panel {
+            grid-column: 1 / -1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: var(--primary);
+        }
+
+        .simulation-controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        button {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .transaction-feed {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .transaction {
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border-left: 4px solid var(--success);
+            animation: slideIn 0.3s ease;
+        }
+
+        .transaction.suspicious {
+            border-left-color: var(--warning);
+            background: rgba(245, 158, 11, 0.05);
+        }
+
+        .transaction.malicious {
+            border-left-color: var(--danger);
+            background: rgba(239, 68, 68, 极05);
+        }
+
+        .tx-hash {
+            font-family: monospace;
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+
+        .tx-details {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 100px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .status-verified {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+        }
+
+        .status-warning {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning);
+        }
+
+        .status-danger {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+        }
+
+        .ai-analysis {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .analysis-text {
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 1.5rem;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        .pulse { animation: pulse 2s infinite; }
+
+        @media (max-width: 768px) {
+            .dashboard, .main-panel, .stats-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>CryptoGuard Sentinel</h1>
+            <p class="subtitle">Enterprise-Grade Crypto Payment Protection | Live AI Simulation</p>
+        </header>
+
+        <div class="dashboard">
+            <div class="card">
+                <h2>Live Transaction Monitor</h2>
+                <div class="simulation-controls">
+                    <button class="btn-primary" id="startSim">▶ Start Simulation</button>
+                    <button class="btn-danger" id="stopSim">⏹ Stop</button>
+                </div>
+                <div class="transaction-feed" id="transactionFeed"></div>
+            </div>
+
+            <div class="card">
+                <h2>AI Threat Analysis</h2>
+                <div id="aiAnalysisPanel">
+                    <p class="analysis-text">Simulation inactive. Start the simulation to see real-time AI analysis.</p>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-card"><div class="stat-value" id="totalTx">0</div><div class="stat-label">Total Transactions</div></div>
+                    <div class="stat-card"><div class="stat-value" id="blockedTx">0</div><div class="stat-label">Threats Blocked</div></div>
+                    <div class="stat-card"><div class="stat-value" id="savedValue">$0</div><div class="stat-label">Protected Value</div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SIMULATION_SPEED = 2500;
+        const MALICIOUS_RATE = 0.25;
+        const SUSPICIOUS_RATE = 0.15;
+
+        const startBtn = document.getElementById('startSim');
+        const stopBtn = document.getElementById('stopSim');
+        const transactionFeed = document.getElementById('transactionFeed');
+        const aiAnalysisPanel = document.getElementById('aiAnalysisPanel');
+        const totalTxEl = document.getElementById('totalTx');
+        const blockedTxEl = document.getElementById('blockedTx');
+        const savedValueEl = document.getElementById('savedValue');
+
+        let simulationInterval = null;
+        let totalTransactions = 0;
+        let threatsBlocked = 0;
+        let protectedValue = 0;
+
+        const legitimateAddresses = [
+            '0x742d35Cc6634C0532925a3b844Bc454e4438f44e',
+            '0x503828976D22510aad0201ac7EC88293211D23Da',
+            'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
+            '0xDAFEA492D9c6733ae3d56b7Ed1ADB60692c98Bc5'
+        ];
+
+        const maliciousAddresses = [
+            '0x8576acc5c05d6ce88f4e49bf65bdf0c62f91353c',
+            '0x901bb9583b24d97e995513c6778dc6888ab6870e',
+            'bc1q9w8u5fq7z0x7z0x7z0x7z0x7z0x7z0x7z0x7z0x',
+            '0x8f7a0e4c5f6a3b2c1d0e9f8a7b极c5d4e3f2a1b0'
+        ];
+
+        const analysisResponses = {
+            legitimate: [
+                "✅ Transaction validated. Pattern matches known legitimate behavior.",
+                "✅ Signature verification passed. Destination address is whitelisted.",
+                "✅ AI Confidence: 99.8%. Transaction within normal parameters."
+            ],
+            suspicious: [
+                "⚠️ Moderate confidence anomaly detected. Transaction value 450% above average.",
+                "⚠️ Behavioral flag: First-time transaction with this address.",
+                "⚠️ Network anomaly: Unusually high gas price for standard transfer."
+            ],
+            malicious: [
+                "🚨 CRITICAL THREAT DETECTED! Destination address associated with fraud (98.7% confidence).",
+                "🚨 AI predicts 99.2% probability of smart contract honeypot. Auto-freeze initiated.",
+                "🚨 Pattern match: Known replay attack signature detected. Blocked."
+            ]
+        };
+
+        function generateTransaction() {
+            totalTransactions++;
+            totalTxEl.textContent = totalTransactions;
+
+            const isMalicious = Math.random() < MALICIOUS_RATE;
+            const isSuspicious = !isMalicious && Math.random() < SUSPICIOUS_RATE;
+            
+            const fromAddress = legitimateAddresses[Math.floor(Math.random() * legitimateAddresses.length)];
+            let toAddress, status, amount, analysis;
+
+            if (isMalicious) {
+                toAddress = maliciousAddresses[Math.floor(Math.random() * maliciousAddresses.length)];
+                status = 'malicious';
+                amount = (Math.random() * 50 + 10).toFixed(4);
+                analysis = analysisResponses.malicious[Math.floor(Math.random() * analysisResponses.malicious.length)];
+                
+                threatsBlocked++;
+                protectedValue += parseFloat(amount);
+                blockedTxEl.textContent = threatsBlocked;
+                savedValueEl.textContent = `$${protectedValue.toFixed(2)}`;
+            } else if (isSuspicious) {
+                toAddress = legitimateAddresses[Math.floor(Math.random() * legitimateAddresses.length)];
+                status = 'suspicious';
+                amount = (Math.random() * 5 + 0.1).toFixed(4);
+                analysis = analysisResponses.suspicious[Math.floor(Math.random() * analysisResponses.suspicious.length)];
+            } else {
+                toAddress = legitimateAddresses[Math.floor(Math.random() * legitimateAddresses.length)];
+                status = 'verified';
+                amount = (Math.random() * 3 + 0.01).toFixed(4);
+                analysis = analysisResponses.legitimate[Math.floor(Math.random() * analysisResponses.legitimate.length)];
+            }
+
+            const txHash = `0x${Array.from({length: 64}, () => Math.floor(Math.random() * 16).toString(16)).join('')}`;
+            const coin = Math.random() > 0.5 ? 'ETH' : 'BTC';
+
+            const txEl = document.createElement('div');
+            txEl.className = `transaction ${status}`;
+            txEl.innerHTML = `
+                <div class="tx-hash">${txHash}</div>
+                <div class="tx-details">
+                    <span>${fromAddress.slice(0, 8)}... → ${toAddress.slice(0, 8)}...</span>
+                    <span>${amount} ${coin}</span>
+                </div>
+                <div class="status-badge status-${status}">${status.toUpperCase()}</div>
+                <div class="ai-analysis"><p class="analysis-text">${analysis}</p></div>
+            `;
+
+            transactionFeed.insertBefore(txEl, transactionFeed.firstChild);
+            
+            aiAnalysisPanel.innerHTML = `
+                <h3>Real-Time Analysis</h3>
+                <p class="analysis-text">${analysis}</p>
+                <p class="analysis-text"><small>AI Model: Hybrid Neural Network v3.4 | Confidence: ${(Math.random() * 5 + 95).toFixed(1)}%</small></p>
+            `;
+
+            if (transactionFeed.children.length > 10) {
+                transactionFeed.removeChild(transactionFeed.lastChild);
+            }
+        }
+
+        function startSimulation() {
+            if (simulationInterval) return;
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            simulationInterval = setInterval(generateTransaction, SIMULATION_SPEED);
+            generateTransaction();
+            aiAnalysisPanel.innerHTML = '<p class="analysis-text">🚀 Simulation started. Monitoring live transaction stream...</p>';
+        }
+
+        function stopSimulation() {
+            if (!simulationInterval) return;
+            clearInterval(simulationInterval);
+            simulationInterval = null;
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            aiAnalysisPanel.innerHTML = '<p class="analysis-text">Simulation paused. Start again to see AI threat detection.</p>';
+        }
+
+        startBtn.addEventListener('click', startSimulation);
+        stopBtn.addEventListener('click', stopSimulation);
+        stopBtn.disabled = true;
+    </script>
+</body>
+</html>
