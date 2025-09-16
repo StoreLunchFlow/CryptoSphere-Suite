@@ -7,7 +7,8 @@ const ECPair = ECPairFactory(ecc);
 
 class BitcoinTransactionEngine {
     constructor() {
-        this.network = bitcoin.networks.testnet;
+        // SWITCH TO MAINNET
+        this.network = bitcoin.networks.bitcoin;
     }
 
     // Keep existing methods for backward compatibility
@@ -24,9 +25,10 @@ class BitcoinTransactionEngine {
     }
 
     async fetchUTXOs(address) {
+        // USE MAINNET ENDPOINTS
         const endpoints = [
-            'https://mempool.space/testnet/api/address/' + address + '/utxo',
-            'https://blockstream.info/testnet/api/address/' + address + '/utxo'
+            'https://mempool.space/api/address/' + address + '/utxo',
+            'https://blockstream.info/api/address/' + address + '/utxo'
         ];
 
         for (const url of endpoints) {
@@ -40,7 +42,7 @@ class BitcoinTransactionEngine {
 
     async estimateFeeRate() {
         try {
-            const res = await axios.get('https://mempool.space/testnet/api/v1/fees/recommended');
+            const res = await axios.get('https://mempool.space/api/v1/fees/recommended');
             return res.data.fastestFee || 20;
         } catch {
             return 20;
@@ -97,8 +99,8 @@ class BitcoinTransactionEngine {
         
         // Broadcast
         const endpoints = [
-            'https://mempool.space/testnet/api/tx',
-            'https://blockstream.info/testnet/api/tx'
+            'https://mempool.space/api/tx',
+            'https://blockstream.info/api/tx'
         ];
 
         for (const endpoint of endpoints) {
