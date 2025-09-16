@@ -26,17 +26,17 @@ class BitcoinTransactionEngine {
         // USE MAINNET ENDPOINTS - INCLUDING MEMPOOL DATA
         const endpoints = [
             { 
-                url: \https://mempool.space/api/address/\/utxo\, 
+                url: 'https://mempool.space/api/address/' + address + '/utxo', 
                 name: 'Mempool.space',
                 includeUnconfirmed: true
             },
             { 
-                url: \https://blockstream.info/api/address/\/utxo\, 
+                url: 'https://blockstream.info/api/address/' + address + '/utxo', 
                 name: 'Blockstream.info',
                 includeUnconfirmed: true
             },
             { 
-                url: \https://api.blockcypher.com/v1/btc/main/addrs/\/full?limit=1000\, 
+                url: 'https://api.blockcypher.com/v1/btc/main/addrs/' + address + '/full?limit=1000', 
                 name: 'BlockCypher', 
                 includeUnconfirmed: true,
                 transform: (data) => {
@@ -53,7 +53,7 @@ class BitcoinTransactionEngine {
 
         for (const endpoint of endpoints) {
             try {
-                console.log(\🔍 Fetching UTXOs (including unconfirmed) from \...\);
+                console.log('🔍 Fetching UTXOs (including unconfirmed) from ' + endpoint.name + '...');
                 const res = await axios.get(endpoint.url, { timeout: 5000 });
                 
                 let utxos = [];
@@ -68,13 +68,13 @@ class BitcoinTransactionEngine {
                 
                 if (utxos.length > 0) {
                     const unconfirmedCount = utxos.filter(u => u.status === 'unconfirmed').length;
-                    console.log(\✅ Found \ UTXOs (\ unconfirmed) from \\);
+                    console.log('✅ Found ' + utxos.length + ' UTXOs (' + unconfirmedCount + ' unconfirmed) from ' + endpoint.name);
                     return utxos;
                 } else {
-                    console.log(\ℹ️  No UTXOs found from \\);
+                    console.log('ℹ️  No UTXOs found from ' + endpoint.name);
                 }
             } catch (error) {
-                console.log(\⚠️  Failed to fetch from \: \\);
+                console.log('⚠️  Failed to fetch from ' + endpoint.name + ': ' + error.message);
             }
         }
         
@@ -100,7 +100,7 @@ class BitcoinTransactionEngine {
                     return res.data.high_fee_per_kb ? Math.ceil(res.data.high_fee_per_kb / 1000) : 50;
                 }
             } catch (error) {
-                console.log(\⚠️  Failed to fetch fee rate from \: \\);
+                console.log('⚠️  Failed to fetch fee rate from ' + url + ': ' + error.message);
             }
         }
         console.log('ℹ️  Using default fee rate: 50 sat/vB (higher for unconfirmed)');
@@ -109,7 +109,7 @@ class BitcoinTransactionEngine {
 
     selectUTXOs(utxos, target, feeRate) {
         if (utxos.length === 0) {
-            throw new Error(\No UTXOs found for address. Please ensure your address has sufficient Bitcoin balance (confirmed or unconfirmed).\);
+            throw new Error('No UTXOs found for address. Please ensure your address has sufficient Bitcoin balance (confirmed or unconfirmed).');
         }
 
         // Sort by value (descending) but don't exclude unconfirmed
@@ -125,7 +125,7 @@ class BitcoinTransactionEngine {
 
         if (total < target) {
             const needed = (target - total) / 100000000;
-            throw new Error(\Insufficient funds. Need \ BTC more to complete transaction.\);
+            throw new Error('Insufficient funds. Need ' + needed.toFixed(8) + ' BTC more to complete transaction.');
         }
 
         // Use higher fee for transactions spending unconfirmed inputs
@@ -179,7 +179,7 @@ class BitcoinTransactionEngine {
 
         for (const endpoint of endpoints) {
             try {
-                console.log(\📡 Broadcasting via \...\);
+                console.log('📡 Broadcasting via ' + endpoint.name + '...');
                 let config = {
                     method: 'POST',
                     timeout: 5000
@@ -209,10 +209,10 @@ class BitcoinTransactionEngine {
                     txid = tx.getId();
                 }
 
-                console.log(\✅ Successfully broadcast via \\);
+                console.log('✅ Successfully broadcast via ' + endpoint.name);
                 return txid;
             } catch (error) {
-                console.log(\⚠️  Failed to broadcast via \: \\);
+                console.log('⚠️  Failed to broadcast via ' + endpoint.name + ': ' + error.message);
             }
         }
         throw new Error("All broadcast endpoints failed");
