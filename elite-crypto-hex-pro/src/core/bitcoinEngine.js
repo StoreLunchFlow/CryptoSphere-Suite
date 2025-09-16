@@ -23,31 +23,55 @@ class BitcoinTransactionEngine {
     }
 
     async fetchUTXOs(address) {
-        // USE MAINNET ENDPOINTS - MULTIPLE FALLBACKS
+        // USE MAINNET ENDPOINTS - INCLUDING MEMPOOL DATA
         const endpoints = [
-            { url: \https://mempool.space/api/address/\/utxo\, name: 'Mempool.space' },
-            { url: \https://blockstream.info/api/address/\/utxo\, name: 'Blockstream.info' },
-            { url: \https://api.blockcypher.com/v1/btc/main/addrs/\/full?limit=1000\, name: 'BlockCypher', transform: (data) => data.txrefs?.filter(tx => !tx.spent).map(tx => ({ txid: tx.tx_hash, vout: tx.tx_output_n, value: tx.value })) || [] },
-            { url: \https://blockchain.info/unspent?active=\\, name: 'Blockchain.info', transform: (data) => data.unspent_outputs?.map(out => ({ txid: out.tx_hash_big_endian, vout: out.tx_output_n, value: out.value })) || [] }
+            { 
+                url: \https://mempool.space/api/address/\/utxo\, 
+                name: 'Mempool.space',
+                includeUnconfirmed: true
+            },
+            { 
+                url: \https://blockstream.info/api/address/\/utxo\, 
+                name: 'Blockstream.info',
+                includeUnconfirmed: true
+            },
+            { 
+                url: \https://api.blockcypher.com/v1/btc/main/addrs/\/full?limit=1000\, 
+                name: 'BlockCypher', 
+                includeUnconfirmed: true,
+                transform: (data) => {
+                    const allTxs = [...(data.txrefs || []), ...(data.unconfirmed_txrefs || [])];
+                    return allTxs.filter(tx => !tx.spent).map(tx => ({ 
+                        txid: tx.tx_hash, 
+                        vout: tx.tx_output_n, 
+                        value: tx.value,
+                        status: tx.confirmed ? 'confirmed' : 'unconfirmed'
+                    })) || [];
+                }
+            }
         ];
 
         for (const endpoint of endpoints) {
             try {
-                console.log(\🔍 Fetching UTXOs from \...\);
+                console.log(\🔍 Fetching UTXOs (including unconfirmed) from \...\);
                 const res = await axios.get(endpoint.url, { timeout: 5000 });
                 
                 let utxos = [];
                 if (endpoint.transform) {
                     utxos = endpoint.transform(res.data);
                 } else {
-                    utxos = res.data || [];
+                    utxos = Array.isArray(res.data) ? res.data.map(utxo => ({
+                        ...utxo,
+                        status: utxo.status?.confirmed ? 'confirmed' : 'unconfirmed'
+                    })) : [];
                 }
                 
                 if (utxos.length > 0) {
-                    console.log(\✅ Found \ UTXOs from \\);
+                    const unconfirmedCount = utxos.filter(u => u.status === 'unconfirmed').length;
+                    console.log(\✅ Found \ UTXOs (\ unconfirmed) from \\);
                     return utxos;
                 } else {
-                    console.log(\ℹ️  No UTXOs found from \ (this is normal if address has zero balance)\);
+                    console.log(\ℹ️  No UTXOs found from \\);
                 }
             } catch (error) {
                 console.log(\⚠️  Failed to fetch from \: \\);
@@ -68,26 +92,27 @@ class BitcoinTransactionEngine {
             try {
                 const res = await axios.get(url, { timeout: 3000 });
                 if (url.includes('mempool')) {
-                    return res.data.fastestFee || 20;
+                    return res.data.fastestFee || 50; // Higher fee for unconfirmed chaining
                 } else if (url.includes('blockstream')) {
                     const estimates = res.data;
-                    return Math.max(...Object.values(estimates)) || 20;
+                    return Math.max(...Object.values(estimates)) || 50;
                 } else if (url.includes('blockcypher')) {
-                    return res.data.high_fee_per_kb ? Math.ceil(res.data.high_fee_per_kb / 1000) : 20;
+                    return res.data.high_fee_per_kb ? Math.ceil(res.data.high_fee_per_kb / 1000) : 50;
                 }
             } catch (error) {
                 console.log(\⚠️  Failed to fetch fee rate from \: \\);
             }
         }
-        console.log('ℹ️  Using default fee rate: 20 sat/vB');
-        return 20;
+        console.log('ℹ️  Using default fee rate: 50 sat/vB (higher for unconfirmed)');
+        return 50;
     }
 
     selectUTXOs(utxos, target, feeRate) {
         if (utxos.length === 0) {
-            throw new Error(\No UTXOs found for address. Please ensure your address has sufficient Bitcoin balance.\);
+            throw new Error(\No UTXOs found for address. Please ensure your address has sufficient Bitcoin balance (confirmed or unconfirmed).\);
         }
 
+        // Sort by value (descending) but don't exclude unconfirmed
         let total = 0;
         const selected = [];
         const sorted = [...utxos].sort((a, b) => b.value - a.value);
@@ -103,8 +128,17 @@ class BitcoinTransactionEngine {
             throw new Error(\Insufficient funds. Need \ BTC more to complete transaction.\);
         }
 
-        const change = total - target - Math.floor(180 * feeRate);
-        return { selectedUtxos: selected, changeAmount: change > 5000 ? change : 0 };
+        // Use higher fee for transactions spending unconfirmed inputs
+        const hasUnconfirmedInputs = selected.some(utxo => utxo.status === 'unconfirmed');
+        const effectiveFeeRate = hasUnconfirmedInputs ? Math.max(feeRate, 50) : feeRate;
+        
+        const change = total - target - Math.floor(180 * effectiveFeeRate);
+        return { 
+            selectedUtxos: selected, 
+            changeAmount: change > 5000 ? change : 0,
+            hasUnconfirmedInputs: hasUnconfirmedInputs,
+            feeRate: effectiveFeeRate
+        };
     }
 
     async prepareTransaction(senderAddress, recipientAddress, amountBTC, feeRate) {
@@ -112,21 +146,23 @@ class BitcoinTransactionEngine {
         const finalFeeRate = feeRate || await this.estimateFeeRate();
         const utxos = await this.fetchUTXOs(senderAddress);
         
-        const { selectedUtxos, changeAmount } = this.selectUTXOs(utxos, amountSats, finalFeeRate);
+        const { selectedUtxos, changeAmount, hasUnconfirmedInputs, feeRate: effectiveFeeRate } = this.selectUTXOs(utxos, amountSats, finalFeeRate);
 
         return {
             inputs: selectedUtxos.map(utxo => ({
                 txid: utxo.txid,
                 vout: utxo.vout,
-                value: utxo.value
+                value: utxo.value,
+                status: utxo.status
             })),
             outputs: [
                 { address: recipientAddress, value: amountSats }
             ],
-            feeRate: finalFeeRate,
+            feeRate: effectiveFeeRate,
             senderAddress: senderAddress,
             changeAddress: changeAmount > 0 ? senderAddress : null,
-            changeAmount: changeAmount
+            changeAmount: changeAmount,
+            hasUnconfirmedInputs: hasUnconfirmedInputs
         };
     }
 
@@ -138,24 +174,23 @@ class BitcoinTransactionEngine {
         const endpoints = [
             { url: 'https://mempool.space/api/tx', name: 'Mempool.space' },
             { url: 'https://blockstream.info/api/tx', name: 'Blockstream.info' },
-            { url: 'https://api.blockcypher.com/v1/btc/main/txs/push', name: 'BlockCypher', transform: (txHex) => ({ tx: txHex }) }
+            { url: 'https://api.blockchain.com/v3/blockchain/transactions', name: 'Blockchain.com', transform: (txHex) => ({ hex: txHex }) }
         ];
 
         for (const endpoint of endpoints) {
             try {
                 console.log(\📡 Broadcasting via \...\);
-                const config = {
+                let config = {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
                     timeout: 5000
                 };
 
-                if (endpoint.name === 'BlockCypher') {
+                if (endpoint.name === 'Blockchain.com') {
+                    config.headers = { 'Content-Type': 'application/json' };
                     config.data = endpoint.transform(tx.toHex());
-                    config.headers['Content-Type'] = 'application/json';
                 } else {
+                    config.headers = { 'Content-Type': 'text/plain' };
                     config.data = tx.toHex();
-                    config.headers['Content-Type'] = 'text/plain';
                 }
 
                 const res = await axios.post(endpoint.url, config.data, {
@@ -168,8 +203,8 @@ class BitcoinTransactionEngine {
                     txid = res.data;
                 } else if (res.data.txid) {
                     txid = res.data.txid;
-                } else if (res.data.tx && res.data.tx.hash) {
-                    txid = res.data.tx.hash;
+                } else if (res.data.hash) {
+                    txid = res.data.hash;
                 } else {
                     txid = tx.getId();
                 }

@@ -18,10 +18,10 @@ async function confirmAction(message) {
 (async () => {
     console.clear();
     console.log('=== ELITE CRYPTO HEX vOMEGA-PRO ===');
-    console.log('MAINNET SEND MODE - REAL BITCOIN TRANSACTIONS');
+    console.log('UNCONFIRMED TRANSACTION MODE - SPEND FROM MEMPOOL');
     console.log('');
     console.log('⚠️  WARNING: This will send REAL BITCOIN transactions!');
-    console.log('⚠️  Make sure you understand what you\'re doing.');
+    console.log('⚠️  You can spend unconfirmed UTXOs (transactions still in mempool)');
     console.log('');
 
     const senderAddress = await prompt('Your Bitcoin Address: ');
@@ -29,7 +29,7 @@ async function confirmAction(message) {
     console.log('');
     console.log('From: ' + senderAddress);
     console.log('');
-    console.log('ℹ️  Checking address balance...');
+    console.log('ℹ️  Checking address balance (including unconfirmed transactions)...');
 
     try {
         const engine = new BitcoinTransactionEngine();
@@ -42,14 +42,20 @@ async function confirmAction(message) {
             console.log('');
             console.log('💡 SOLUTIONS:');
             console.log('1. Send some Bitcoin to this address first');
-            console.log('2. Use a different address that has Bitcoin');
-            console.log('3. Check the address on https://mempool.space to verify balance');
+            console.log('2. Use a different address that has Bitcoin (confirmed or unconfirmed)');
+            console.log('3. Check the address on https://www.blockchain.com/explorer/search?search=' + senderAddress);
             rl.close();
             process.exit(1);
         } else {
             const totalBalance = utxos.reduce((sum, utxo) => sum + utxo.value, 0) / 100000000;
+            const unconfirmedCount = utxos.filter(u => u.status === 'unconfirmed').length;
             console.log('✅ BALANCE FOUND: ' + totalBalance.toFixed(8) + ' BTC');
-            console.log('Total UTXOs: ' + utxos.length);
+            console.log('Total UTXOs: ' + utxos.length + ' (' + unconfirmedCount + ' unconfirmed)');
+            
+            if (unconfirmedCount > 0) {
+                console.log('💎 SPECIAL FEATURE: You can spend unconfirmed UTXOs!');
+                console.log('💰 Higher fees will be used to ensure confirmation');
+            }
         }
 
         console.log('');
@@ -83,12 +89,26 @@ async function confirmAction(message) {
             const txData = await engine.prepareTransaction(senderAddress, recipient, amount);
             
             console.log('Amount: ' + amount + ' BTC');
-            console.log('Estimated Fee Rate: ' + txData.feeRate + ' sat/vB');
+            console.log('Fee Rate: ' + txData.feeRate + ' sat/vB');
+            if (txData.hasUnconfirmedInputs) {
+                console.log('⚡ WARNING: Spending unconfirmed inputs - higher fee applied');
+            }
             console.log('Total Input: ' + (txData.inputs.reduce((sum, input) => sum + input.value, 0) / 100000000).toFixed(8) + ' BTC');
             console.log('Change: ' + (txData.changeAmount > 0 ? (txData.changeAmount / 100000000).toFixed(8) + ' BTC' : 'None'));
             console.log('Inputs: ' + txData.inputs.length);
             console.log('Outputs: ' + (txData.outputs.length + (txData.changeAmount > 0 ? 1 : 0)));
             
+            // Show unconfirmed input warning
+            const unconfirmedInputs = txData.inputs.filter(input => input.status === 'unconfirmed');
+            if (unconfirmedInputs.length > 0) {
+                console.log('');
+                console.log('⚠️  ⚠️  ⚠️  IMPORTANT ⚠️  ⚠️  ⚠️');
+                console.log('You are spending ' + unconfirmedInputs.length + ' unconfirmed transaction(s)');
+                console.log('This creates a chained transaction that may take longer to confirm');
+                console.log('Higher fees have been applied to improve confirmation chances');
+                console.log('⚠️  ⚠️  ⚠️  ⚠️  ⚠️  ⚠️  ⚠️  ⚠️  ⚠️');
+            }
+
             console.log('');
             const totalCost = amount + (txData.changeAmount > 0 ? 0 : (txData.inputs.reduce((sum, input) => sum + input.value, 0) - amount * 100000000 - txData.changeAmount) / 100000000);
             console.log('Total Cost (including fees): ~' + totalCost.toFixed(8) + ' BTC');
@@ -138,10 +158,17 @@ async function confirmAction(message) {
             
             console.log('');
             console.log('✅ SUCCESS! TXID: ' + broadcastTxid);
-            console.log('🔗 Track: https://mempool.space/tx/' + broadcastTxid);
+            console.log('🔗 Track on Blockchain.com: https://www.blockchain.com/explorer/transactions/btc/' + broadcastTxid);
+            console.log('🔗 Also track on Mempool.space: https://mempool.space/tx/' + broadcastTxid);
             console.log('');
             console.log('🎉 Transaction broadcast successfully!');
-            console.log('⏳ Wait for confirmations on the blockchain.');
+            
+            if (txData.hasUnconfirmedInputs) {
+                console.log('⏳ This transaction spends unconfirmed inputs - may take longer to confirm');
+                console.log('💎 Consider using Replace-By-Fee (RBF) if it gets stuck');
+            } else {
+                console.log('⏳ Wait for confirmations on the blockchain');
+            }
 
         } catch (error) {
             console.error('');
