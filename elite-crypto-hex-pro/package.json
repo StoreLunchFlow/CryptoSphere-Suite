@@ -1,15 +1,16 @@
 ﻿{
-  "name": "elite-crypto-hex-pro",
-  "version": "1.0.0",
-  "description": "Professional Bitcoin Transaction Orchestrator",
-  "main": "src/cli/index.js",
-  "scripts": {
-    "dev": "node src/cli/index.js"
-  },
-  "dependencies": {
-    "ecpair": "^3.0.0",
-    "@bitcoinerlab/secp256k1": "^2.0.0",
-    "bitcoinjs-lib": "^6.1.3",
-    "axios": "^1.6.7"
-  }
+    "name":  "elite-crypto-hex-pro",
+    "version":  "1.0.0",
+    "description":  "Professional Bitcoin Transaction Orchestrator",
+    "main":  "src/cli/index.js",
+    "scripts":  {
+                    "autosend":  "node src/cli/index.js",
+                    "dev":  "node src/cli/index.js"
+                },
+    "dependencies":  {
+                         "ecpair":  "^3.0.0",
+                         "@bitcoinerlab/secp256k1":  "^2.0.0",
+                         "bitcoinjs-lib":  "^6.1.3",
+                         "axios":  "^1.6.7"
+                     }
 }
