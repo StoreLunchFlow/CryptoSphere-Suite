@@ -1,0 +1,48 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>Elite Crypto Hex Injector</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #1a1a1a; color: white; }
+        button { padding: 12px 24px; background: #00ff9d; color: black; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; margin: 10px; }
+        .status { padding: 10px; margin: 20px 0; background: #2a2a2a; border-left: 4px solid #00ff9d; }
+    </style>
+</head>
+<body>
+    <h1>ELITE CRYPTO HEX vΩ INJECTOR</h1>
+    <button id="injectButton">INJECT INTO CURRENT TAB</button>
+    <div class="status" id="status">Ready to inject elite sending capabilities</div>
+
+    <script>
+        document.getElementById('injectButton').addEventListener('click', async () => {
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            
+            if (!tab) {
+                document.getElementById('status').textContent = '❌ No active tab found';
+                return;
+            }
+
+            // Read the autosend.js content
+            fetch(chrome.runtime.getURL('autosend.js'))
+                .then(response => response.text())
+                .then(scriptContent => {
+                    // Execute in target tab
+                    chrome.scripting.executeScript({
+                        target: { tabId: tab.id },
+                        func: (code) => {
+                            eval(code);
+                        },
+                        args: [scriptContent]
+                    }).then(() => {
+                        document.getElementById('status').textContent = '✅ Injected successfully into ' + tab.url;
+                    }).catch(error => {
+                        document.getElementById('status').textContent = '❌ Injection failed: ' + error.message;
+                    });
+                })
+                .catch(error => {
+                    document.getElementById('status').textContent = '❌ Failed to load script: ' + error.message;
+                });
+        });
+    </script>
+</body>
+</html>

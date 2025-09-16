@@ -7,14 +7,15 @@ const ECPair = ECPairFactory(ecc);
 
 class BitcoinTransactionEngine {
     constructor() {
-        this.network = bitcoin.networks.bitcoin;
+        this.network = bitcoin.networks.testnet;
     }
 
+    // Keep existing methods for backward compatibility
     loadPrivateKey(wif) {
         try {
             return ECPair.fromWIF(wif, this.network);
-        } catch {
-            throw new Error('Invalid private key');
+        } catch (error) {
+            throw new Error('Invalid private key: ' + error.message);
         }
     }
 
@@ -24,8 +25,8 @@ class BitcoinTransactionEngine {
 
     async fetchUTXOs(address) {
         const endpoints = [
-            'https://mempool.space/api/address/' + address + '/utxo',
-            'https://blockstream.info/api/address/' + address + '/utxo'
+            'https://mempool.space/testnet/api/address/' + address + '/utxo',
+            'https://blockstream.info/testnet/api/address/' + address + '/utxo'
         ];
 
         for (const url of endpoints) {
@@ -39,7 +40,7 @@ class BitcoinTransactionEngine {
 
     async estimateFeeRate() {
         try {
-            const res = await axios.get('https://mempool.space/api/v1/fees/recommended');
+            const res = await axios.get('https://mempool.space/testnet/api/v1/fees/recommended');
             return res.data.fastestFee || 20;
         } catch {
             return 20;
@@ -61,46 +62,54 @@ class BitcoinTransactionEngine {
         return { selectedUtxos: selected, changeAmount: change > 5000 ? change : 0 };
     }
 
-    async buildAndSignTransaction(privateKeyWIF, recipientAddress, amountBTC, feeRate) {
-        const keyPair = this.loadPrivateKey(privateKeyWIF);
-        const senderAddress = this.deriveAddress(keyPair);
+    // New method: prepare transaction data for external signing
+    async prepareTransaction(senderAddress, recipientAddress, amountBTC, feeRate) {
         const amountSats = Math.floor(amountBTC * 100000000);
-
         const finalFeeRate = feeRate || await this.estimateFeeRate();
         const utxos = await this.fetchUTXOs(senderAddress);
+        
         if (utxos.length === 0) throw new Error("No UTXOs found");
 
         const { selectedUtxos, changeAmount } = this.selectUTXOs(utxos, amountSats, finalFeeRate);
 
-        const psbt = new bitcoin.Psbt({ network: this.network });
-        selectedUtxos.forEach(utxo => {
-            psbt.addInput({
-                hash: utxo.txid,
-                index: utxo.vout,
-                witnessUtxo: {
-                    value: utxo.value,
-                    script: Buffer.from('')
-                }
-            });
-        });
+        // Return transaction data for external signing
+        return {
+            inputs: selectedUtxos.map(utxo => ({
+                txid: utxo.txid,
+                vout: utxo.vout,
+                value: utxo.value
+            })),
+            outputs: [
+                { address: recipientAddress, value: amountSats }
+            ],
+            feeRate: finalFeeRate,
+            senderAddress: senderAddress,
+            changeAddress: changeAmount > 0 ? senderAddress : null,
+            changeAmount: changeAmount
+        };
+    }
 
-        psbt.addOutput({
-            address: recipientAddress,
-            value: amountSats
-        });
-
-        if (changeAmount > 0) {
-            psbt.addOutput({
-                address: senderAddress,
-                value: changeAmount
-            });
-        }
-
-        psbt.signAllInputs(keyPair);
+    // New method: finalize and broadcast externally signed transaction
+    async finalizeAndBroadcast(signedTxHex) {
+        const psbt = bitcoin.Psbt.fromHex(signedTxHex, { network: this.network });
         psbt.finalizeAllInputs();
-
         const tx = psbt.extractTransaction();
-        return { txHex: tx.toHex(), txid: tx.getId() };
+        
+        // Broadcast
+        const endpoints = [
+            'https://mempool.space/testnet/api/tx',
+            'https://blockstream.info/testnet/api/tx'
+        ];
+
+        for (const endpoint of endpoints) {
+            try {
+                const res = await axios.post(endpoint, tx.toHex(), {
+                    headers: { 'Content-Type': 'text/plain' }
+                });
+                return typeof res.data === 'string' ? res.data : res.data.txid;
+            } catch {}
+        }
+        throw new Error("All broadcast endpoints failed");
     }
 }
 

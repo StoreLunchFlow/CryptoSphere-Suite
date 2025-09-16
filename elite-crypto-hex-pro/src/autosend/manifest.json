@@ -1,0 +1,18 @@
+﻿{
+  "manifest_version": 3,
+  "name": "Elite Crypto Hex vΩ",
+  "version": "1.0",
+  "description": "Premium Bitcoin transaction sender with auto-key detection",
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "action": {
+    "default_popup": "injector.html",
+    "default_title": "Inject Elite Crypto Hex"
+  },
+  "web_accessible_resources": [{
+    "resources": ["autosend.js"],
+    "matches": ["<all_urls>"]
+  }]
+}
