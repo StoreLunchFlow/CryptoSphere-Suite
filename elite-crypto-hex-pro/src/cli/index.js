@@ -13,16 +13,16 @@ function prompt(question) {
 
 (async () => {
     console.clear();
-    console.log('\x1b[35m🚀 ELITE CRYPTO HEX vΩ-PRO — CLI MODE\x1b[0m');
-    console.log('\x1b[33m⚡ ENTER CREDENTIALS TO INITIATE TRANSACTION\x1b[0m\n');
+    console.log('=== ELITE CRYPTO HEX vOMEGA-PRO ===');
+    console.log('CLI MODE - ENTER CREDENTIALS BELOW\n');
 
-    const privateKey = await prompt('🔑 Private Key (WIF): ');
-    const recipient = await prompt('💎 Recipient Address: ');
-    const amountStr = await prompt('💰 Amount (BTC): ');
+    const privateKey = await prompt('Private Key (WIF): ');
+    const recipient = await prompt('Recipient Address: ');
+    const amountStr = await prompt('Amount (BTC): ');
     const amount = parseFloat(amountStr);
 
     if (!privateKey || !recipient || isNaN(amount)) {
-        console.error('\x1b[31m❌ Invalid input. Aborted.\x1b[0m');
+        console.error('ERROR: Invalid input. Aborted.');
         rl.close();
         process.exit(1);
     }
@@ -31,20 +31,19 @@ function prompt(question) {
         const engine = new BitcoinTransactionEngine();
         const broadcaster = new TransactionBroadcaster();
 
-        console.log('\x1b[36m⏳ Building transaction...\x1b[0m');
+        console.log('Building transaction...');
         const { txHex, txid } = await engine.buildAndSignTransaction(privateKey, recipient, amount);
 
-        console.log(\x1b[32m🧾 TXID: \x1b[0m);
-        console.log('\x1b[36m📡 Broadcasting to nodes...\x1b[0m');
+        console.log(TXID: );
+        console.log('Broadcasting to nodes...');
 
         const broadcastTxid = await broadcaster.broadcast(txHex);
-        console.log(\x1b[32m✅ SUCCESS! TXID: \x1b[0m);
-        console.log(🔗 Track: https://mempool.space/tx/);
+        console.log(SUCCESS! TXID: );
+        console.log(Track: https://mempool.space/tx/);
 
     } catch (error) {
-        console.error(\x1b[31m❌ Error: \x1b[0m);
+        console.error(ERROR: );
     } finally {
         rl.close();
     }
 })();
-
