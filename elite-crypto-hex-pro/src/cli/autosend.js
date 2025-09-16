@@ -14,13 +14,13 @@ function prompt(question) {
 (async () => {
     console.clear();
     console.log('=== ELITE CRYPTO HEX vOMEGA-PRO ===');
-    console.log('SIMPLIFIED SEND MODE - JUST ADDRESS + AMOUNT\n');
+    console.log('SIMPLIFIED SEND MODE - JUST ADDRESS + AMOUNT\\n');
 
     // Hardcoded testnet address for demo
     const senderAddress = 'tb1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq';
-    console.log(📤 From: );
+    console.log('From: ' + senderAddress);
 
-    const recipient = await prompt('\nRecipient Address: ');
+    const recipient = await prompt('\\nRecipient Address: ');
     const amountStr = await prompt('Amount (BTC): ');
     const amount = parseFloat(amountStr);
 
@@ -33,19 +33,24 @@ function prompt(question) {
     try {
         const engine = new BitcoinTransactionEngine();
         
-        console.log('\n⏳ Preparing transaction...');
+        console.log('\\nPreparing transaction...');
         const txData = await engine.prepareTransaction(senderAddress, recipient, amount);
         
-        console.log('💰 Amount: ' + amount + ' BTC');
-        console.log('📥 Inputs: ' + txData.inputs.length);
-        console.log('📤 Outputs: ' + txData.outputs.length);
+        console.log('Amount: ' + amount + ' BTC');
+        console.log('Inputs: ' + txData.inputs.length);
+        console.log('Outputs: ' + txData.outputs.length);
         
         // Simulate external signing
-        console.log('\n✍️  Simulating wallet signature...');
+        console.log('\\nSimulating wallet signature...');
         await new Promise(r => setTimeout(r, 1500));
         
         // Create mock signed transaction
-        const mockPsbt = new (require('bitcoinjs-lib')).Psbt({ network: require('bitcoinjs-lib').networks.testnet });
+        const bitcoin = require('bitcoinjs-lib');
+        const ECPairFactory = require('ecpair').ECPairFactory;
+        const ecc = require('@bitcoinerlab/secp256k1');
+        const ECPair = ECPairFactory(ecc);
+        
+        const mockPsbt = new bitcoin.Psbt({ network: bitcoin.networks.testnet });
         txData.inputs.forEach(input => {
             mockPsbt.addInput({
                 hash: input.txid,
@@ -61,21 +66,21 @@ function prompt(question) {
         }
         
         // Mock signing
-        const mockKeyPair = require('ecpair').ECPairFactory(require('@bitcoinerlab/secp256k1')).fromWIF('cVt4o7BGAig1UXywgGSmARhxMdzP5qvQsxKkSsc1XEkw3tDTQFpy', require('bitcoinjs-lib').networks.testnet);
+        const mockKeyPair = ECPair.fromWIF('cVt4o7BGAig1UXywgGSmARhxMdzP5qvQsxKkSsc1XEkw3tDTQFpy', bitcoin.networks.testnet);
         mockPsbt.signAllInputs(mockKeyPair);
         mockPsbt.finalizeAllInputs();
         
         const signedTxHex = mockPsbt.extractTransaction().toHex();
         const txid = mockPsbt.extractTransaction().getId();
 
-        console.log('\n📡 Broadcasting transaction...');
+        console.log('\\nBroadcasting transaction...');
         const broadcastTxid = await engine.finalizeAndBroadcast(signedTxHex);
         
-        console.log('\n✅ SUCCESS! TXID: ' + broadcastTxid);
-        console.log('🔗 Track: https://mempool.space/testnet/tx/' + broadcastTxid);
+        console.log('\\nSUCCESS! TXID: ' + broadcastTxid);
+        console.log('Track: https://mempool.space/testnet/tx/' + broadcastTxid);
 
     } catch (error) {
-        console.error('\n❌ ERROR: ' + error.message);
+        console.error('\\nERROR: ' + error.message);
     } finally {
         rl.close();
     }
