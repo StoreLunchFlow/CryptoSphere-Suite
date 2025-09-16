@@ -1,0 +1,27 @@
+{
+    "name": "elite-crypto-hex-pro",
+    "version": "1.0.0",
+    "description": "Professional Bitcoin Transaction Orchestrator",
+    "main": "src/cli/index.js",
+    "scripts": {
+        "dev": "node src/cli/index.js",
+        "build": "tsc",
+        "start": "node dist/cli/index.js",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "dependencies": {
+        "@bitcoinerlab/secp256k1": "^1.2.0",
+        "axios": "^1.12.2",
+        "bitcoinjs-lib": "^6.1.7",
+        "dotenv": "^16.6.1",
+        "ecpair": "^3.0.0"
+    },
+    "devDependencies": {
+        "@types/axios": "^0.9.36",
+        "@types/dotenv": "^6.1.1",
+        "@types/node": "^20.19.15",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.9.2"
+    },
+    "license": "MIT"
+}
